@@ -1,14 +1,11 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using Unity.VisualScripting;
 using UnityEngine;
-using static LevelGenerator.Enums;
+using static Cats.LevelGenerator.Enums;
 
-namespace LevelGenerator
+namespace Cats.LevelGenerator
 {
     public class LevelManager : MonoBehaviour
     {
+        [SerializeField] private GameObject m_roomPrefab;
         private int m_currentFloor;
         private Difficulty m_difficulty;
 
@@ -17,13 +14,18 @@ namespace LevelGenerator
             if (m_currentFloor == 0)
                 m_currentFloor = 1;
 
-            Debug.Log("GenerateLevelButton");
-            LevelGenerator.GenerateLevel(m_difficulty, m_currentFloor);
+            LevelGenerator.GenerateLevel(m_difficulty, m_currentFloor, m_roomPrefab);
         }
 
-        public void GenerateNextRoom()
+        public void GenerateLevelMultipleTimesButton()
         {
-            //LevelGenerator.RandomWalkFromEntranceToBoss();
+            float time = Time.realtimeSinceStartup;
+            int generationTimes = 100;
+            for (int i = 0; i < generationTimes; i++)
+            {
+                GenerateLevelButton();
+            }
+            Debug.Log($"Generated level {generationTimes} times and it took {Time.realtimeSinceStartup - time} seconds.");
         }
     }
 }

@@ -1,4 +1,4 @@
-namespace LevelGenerator
+namespace Cats.LevelGenerator
 {
     public static class Enums
     {

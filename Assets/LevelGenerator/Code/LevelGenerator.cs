@@ -1,8 +1,9 @@
 using System.Collections.Generic;
 using UnityEngine;
-using static LevelGenerator.Enums;
+using static Cats.LevelGenerator.Enums;
+using System.Reflection;
 
-namespace LevelGenerator
+namespace Cats.LevelGenerator
 {
     public static class LevelGenerator
     {
@@ -13,16 +14,17 @@ namespace LevelGenerator
         //private static int m_maxFloors = 3;
         private static bool m_isLevelGenerated;
         //private static Rooms m_roomPrefabs;
-        //private static Dictionary m_generatedRooms;
         private static int m_currentFloorRoomCount;
         public static int[,] m_floorLayout;
         private static int m_maxXSize = 11;
         private static int m_maxYSize = 11;
         private static int m_currentRoomIndex;
         private static List<(int x, int y)> m_roomLocations = new List<(int x, int y)>();
+        private static GameObject m_roomPrefab;
 
-        public static void GenerateLevel(Difficulty _difficulty, int _currentFloor)
+        public static void GenerateLevel(Difficulty _difficulty, int _currentFloor, GameObject _roomPrefab)
         {
+            m_roomPrefab = _roomPrefab;
             IsLevelAlreadyGenerated();
             m_currentFloorRoomCount = CalculateRoomCount(_difficulty, _currentFloor);
             Debug.Log("m_currentFloorRoomCount: " + m_currentFloorRoomCount);
@@ -60,20 +62,26 @@ namespace LevelGenerator
             {
                 Object.Destroy(cubes.transform.GetChild(i).gameObject);
             }
+            ClearConsole();
+        }
+
+        private static void ClearConsole()
+        {
+            var assemly = Assembly.GetAssembly(typeof(UnityEditor.Editor));
+            var type = assemly.GetType("UnityEditor.LogEntries");
+            var method = type.GetMethod("Clear");
+            method.Invoke(new object(), null);
         }
 
         public static void RandomWalkFromEntranceToBoss()
-        //public static void RandomWalkFromEntranceToBoss()
         {
             if (m_currentRoomIndex < m_currentFloorRoomCount)
             {
                 int debugExitLoop = 0;
                 do
                 {
-                    //Debug.Log("_currentRoomIndex: " + _currentRoomIndex);
-                    PlaceRoomLayout();
                     Debug.Log("_currentRoomIndex: " + m_currentRoomIndex);
-                    //PlaceRoomLayout();
+                    PlaceRoomLayout();
                     debugExitLoop++;
                     if (debugExitLoop >= 10)
                     {
@@ -84,6 +92,7 @@ namespace LevelGenerator
 
                 DebugVisualiseLayout();
 
+                Debug.Log($"Total rooms is {m_currentFloorRoomCount}");
                 m_isLevelGenerated = true;
             }
             else
@@ -92,7 +101,8 @@ namespace LevelGenerator
             }
         }
 
-        private static GameObject cubes = new GameObject("Cubes");
+        private static GameObject cubes = new GameObject("Floor");
+        private static Texture texture;
         private static void DebugVisualiseLayout()
         {
             string printableString = "";
@@ -108,23 +118,17 @@ namespace LevelGenerator
 
             foreach (var room in m_roomLocations)
             {
-                GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                cube.transform.localScale = new Vector3(0.9f, 0.9f, 0.1f);
-                cube.transform.localPosition = new Vector3(room.x, room.y);
-                cube.transform.SetParent(cubes.transform);
+                GameObject roomPrefab = Object.Instantiate(m_roomPrefab);
+                roomPrefab.transform.SetParent(cubes.transform);
+                roomPrefab.transform.localPosition = new Vector2(room.x, room.y);
             }
-
-
-            // TODO: Place 1x1 cubes to the world for visual debug purposes
         }
 
         private static int[] m_lastPosition = new int[2];
         private static void PlaceRoomLayout()
-        //private static void PlaceRoomLayout()
         {
             int xPosition = 0;
             int yPosition = 0;
-            //if (_currentRoomIndex == 0) // Place Entrance
             if (m_currentRoomIndex == 0) // Place Entrance
             {
                 xPosition = m_floorLayout.GetLength(0) / 3;
@@ -148,28 +152,26 @@ namespace LevelGenerator
                     int randomDirection = 0;
                     randomDirection = Random.Range(0, 4);
                     // TODO: Check is direction empty
-                    int tries = 0;
+                    int tries = 1;
                     bool isValid = false;
                     do
                     {
                         int newXPosition = xPosition + directions[randomDirection, 0];
                         int newYPosition = yPosition + directions[randomDirection, 1];
-                        // TODO: Check that the new position is not out of bounds
-                        if (m_floorLayout[newXPosition, newYPosition] != 0)
+
+                        isValid = IsValidPosition(newXPosition, newYPosition);
+
+                        if (!isValid)
                         {
                             randomDirection++;
                             if (randomDirection > 3)
                                 randomDirection = 0;
                         }
-                        else
-                        {
-                            isValid = true;
-                        }
 
                         tries++;
-                        if (tries > 10)
+                        if (tries > 4)
                         {
-                            Debug.LogError("Breaking do while. Too much tries");
+                            Debug.LogError("The new room position is illegal. Probably a deadend.");
                             break;
                         }
                     } while (!isValid);
@@ -198,6 +200,23 @@ namespace LevelGenerator
             m_roomLocations.Add((xPosition, yPosition));
         }
 
+        private static bool IsValidPosition(int xPosition, int yPosition)
+        {
+            Debug.LogWarning($"Checking new position {xPosition}, {yPosition} from {m_lastPosition[0]}, {m_lastPosition[1]}");
+
+            if (xPosition < 0 || xPosition >= m_floorLayout.GetLength(0)) // Position X is out of bounds
+                return false;
+
+            if (yPosition < 0 || yPosition >= m_floorLayout.GetLength(1)) // Position Y is out of bounds
+                return false;
+
+            foreach (var room in m_roomLocations)
+                if (xPosition == room.x && yPosition == room.y)
+                    return false;
+
+            return true;
+        }
+
         private static bool IsValid(int[,] _directions, int _direction, int _xPosition, int _yPosition)
         {
             int negativeDirection = 0;
@@ -217,21 +236,19 @@ namespace LevelGenerator
                     int newXPos = _xPosition + _directions[x, 0];
                     int newYPos = _yPosition + _directions[x, 1];
 
-                    Debug.Log("m_floorLayout.GetLength(0): " + m_floorLayout.GetLength(0));
                     if (newXPos < 0 || newXPos >= m_floorLayout.GetLength(0))
                     {
                         Debug.LogWarning($"newXPos ({newXPos}) is out of bounds and it is valid adjacent room. Continue loop");
                         continue;
                     }
 
-                    Debug.Log("m_floorLayout.GetLength(1): " + m_floorLayout.GetLength(1));
                     if (newYPos < 0 || newYPos >= m_floorLayout.GetLength(1))
                     {
                         Debug.LogWarning($"newYPos ({newYPos}) is out of bounds and it is valid adjacent room. Continue loop");
                         continue;
                     }
 
-                    Debug.LogWarning($"Checking is {newXPos + 1}, {newYPos + 1} valid from {_xPosition + 1}, {_yPosition + 1}");
+                    Debug.Log($"Checking is {newXPos}, {newYPos} valid from {_xPosition}, {_yPosition}");
                     if (m_floorLayout[newXPos, newYPos] != 0)
                     {
                         Debug.Log("Is not valid");
