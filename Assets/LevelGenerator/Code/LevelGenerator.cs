@@ -21,6 +21,7 @@ namespace Cats.LevelGenerator
         private static int m_currentRoomIndex;
         private static List<RoomData> m_roomData = new List<RoomData>();
         private static GameObject m_roomPrefab;
+        private static Vector2 m_lastPosition;
 
         public static void GenerateLevel(Difficulty _difficulty, int _currentFloor, GameObject _roomPrefab)
         {
@@ -108,20 +109,20 @@ namespace Cats.LevelGenerator
             {
                 GameObject roomPrefab = Object.Instantiate(m_roomPrefab);
                 roomPrefab.transform.SetParent(cubes.transform);
-                roomPrefab.transform.localPosition = new Vector2(room.m_xPosition, room.m_yPosition);
+                roomPrefab.transform.localPosition = new Vector2(room.m_position.x, room.m_position.y);
             }
         }
 
-        private static int[] m_lastPosition = new int[2];
         private static void PlaceRoomLayout()
         {
             RoomType roomType = RoomType.None;
-            int xPosition = 0;
-            int yPosition = 0;
+            //int xPosition = 0;
+            //int yPosition = 0;
+            Vector2 position = Vector2.zero;
             if (m_currentRoomIndex == 0) // Place Entrance
             {
-                xPosition = m_maxXSize / 2;
-                yPosition = m_maxYSize / 2;
+                position.x = m_maxXSize / 2;
+                position.y = m_maxYSize / 2;
                 roomType = RoomType.Entrance;
             }
             else // Place path to the boss
@@ -133,8 +134,7 @@ namespace Cats.LevelGenerator
                 int attempts = 0;
                 do
                 {
-                    xPosition = m_lastPosition[0];
-                    yPosition = m_lastPosition[1];
+                    position = m_lastPosition;
                     int[,] directions = new int[,] { { 0, -1 }, // 0 = up
                                                      { 1,  0 }, // 1 = right
                                                      { 0,  1 }, // 2 = down
@@ -146,10 +146,11 @@ namespace Cats.LevelGenerator
                     do
                     {
                         //Debug.Log($"Direction: {randomDirection}");
-                        int newXPosition = xPosition + directions[randomDirection, 0];
-                        int newYPosition = yPosition + directions[randomDirection, 1];
+                        float newXPosition = position.x + directions[randomDirection, 0];
+                        float newYPosition = position.y + directions[randomDirection, 1];
+                        Vector2 newPosition = new Vector2(newXPosition, newYPosition);
 
-                        isNextPositionValid = IsValidPosition(newXPosition, newYPosition);
+                        isNextPositionValid = IsValidPosition(newPosition);
 
                         if (!isNextPositionValid)
                         {
@@ -168,11 +169,11 @@ namespace Cats.LevelGenerator
                         }
                     } while (!isNextPositionValid);
 
-                    xPosition += directions[randomDirection, 0];
-                    yPosition += directions[randomDirection, 1];
+                    position.x += directions[randomDirection, 0];
+                    position.y += directions[randomDirection, 1];
 
-                    // Check is new position valid
-                    isValidPosition = HasValidNeighbours(directions, randomDirection, xPosition, yPosition);
+                    // Check are the adjacent positions valid
+                    isValidPosition = HasValidNeighbours(position, directions, randomDirection);
 
                     if (!isValidPosition)
                     {
@@ -197,31 +198,30 @@ namespace Cats.LevelGenerator
                     roomType = RoomType.Normal;
             }
 
-            m_lastPosition[0] = xPosition;
-            m_lastPosition[1] = yPosition;
+            m_lastPosition = position;
             Debug.Log($"LastPosition: {m_lastPosition[0]}, {m_lastPosition[1]}");
             m_currentRoomIndex++;
-            m_roomData.Add(new RoomData(xPosition, yPosition, roomType));
+            m_roomData.Add(new RoomData(position, roomType));
         }
 
-        private static bool IsValidPosition(int xPosition, int yPosition)
+        private static bool IsValidPosition(Vector2 position)
         {
             //Debug.LogWarning($"Checking new position {xPosition}, {yPosition} from {m_lastPosition[0]}, {m_lastPosition[1]}");
 
-            if (xPosition < 0 || xPosition >= m_maxXSize) // Position X is out of bounds
+            if (position.x < 0 || position.x >= m_maxXSize) // Position X is out of bounds
                 return false;
 
-            if (yPosition < 0 || yPosition >= m_maxYSize) // Position Y is out of bounds
+            if (position.y < 0 || position.y >= m_maxYSize) // Position Y is out of bounds
                 return false;
 
             foreach (var room in m_roomData)
-                if (xPosition == room.m_xPosition && yPosition == room.m_yPosition)
+                if (position.x == room.m_position.x && position.y == room.m_position.y)
                     return false;
 
             return true;
         }
 
-        private static bool HasValidNeighbours(int[,] _directions, int _direction, int _xPosition, int _yPosition)
+        private static bool HasValidNeighbours(Vector2 _position, int[,] _directions, int _direction)
         {
             int negativeDirection = 0;
             if (_direction == 0)
@@ -237,16 +237,17 @@ namespace Cats.LevelGenerator
             {
                 if (negativeDirection != x)
                 {
-                    int newXPos = _xPosition + _directions[x, 0];
-                    int newYPos = _yPosition + _directions[x, 1];
+                    float newXPos = _position.x + _directions[x, 0];
+                    float newYPos = _position.y + _directions[x, 1];
+                    Vector2 newPosition = new Vector2(newXPos, newYPos);
 
-                    if (newXPos < 0 || newXPos >= m_maxXSize)
+                    if (newPosition.x < 0 || newPosition.x >= m_maxXSize)
                     {
                         //Debug.LogWarning($"newXPos ({newXPos}) is out of bounds and it is valid adjacent room. Continue loop");
                         continue;
                     }
 
-                    if (newYPos < 0 || newYPos >= m_maxYSize)
+                    if (newPosition.y < 0 || newPosition.y >= m_maxYSize)
                     {
                         //Debug.LogWarning($"newYPos ({newYPos}) is out of bounds and it is valid adjacent room. Continue loop");
                         continue;
@@ -254,7 +255,7 @@ namespace Cats.LevelGenerator
 
                     foreach (var room in m_roomData)
                     {
-                        if (newXPos == room.m_xPosition && newYPos == room.m_yPosition)
+                        if (newPosition.x == room.m_position.x && newPosition.y == room.m_position.y)
                         {
                             Debug.Log($"A room already exists in {newXPos}, {newYPos} and thus is not valid location.");
                             return false;

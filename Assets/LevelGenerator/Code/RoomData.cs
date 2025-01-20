@@ -5,15 +5,14 @@ namespace Cats.LevelGenerator
 {
     public class RoomData : MonoBehaviour
     {
-        public int m_xPosition;
-        public int m_yPosition;
-        public int m_roomValue;
+        public Vector2 m_position;
+        public RoomType m_roomType;
+        public bool m_isDeadEnd;
 
-        public RoomData(int _xPosition, int _yPosition, RoomType _roomValue)
+        public RoomData(Vector2 _position, RoomType _roomValue)
         {
-            m_xPosition = _xPosition;
-            m_yPosition = _yPosition;
-            m_roomValue = (int)_roomValue;
+            m_position = _position;
+            m_roomType = _roomValue;
         }
     }
 }
