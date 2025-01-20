@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 using static Cats.LevelGenerator.Enums;
-using System.Reflection;
 
 namespace Cats.LevelGenerator
 {
@@ -15,17 +14,16 @@ namespace Cats.LevelGenerator
         private static bool m_isLevelGenerated;
         //private static Rooms m_roomPrefabs;
         private static int m_currentFloorRoomCount;
-        //public static int[,] m_floorLayout;
         private static int m_maxXSize = 11;
         private static int m_maxYSize = 11;
         private static int m_currentRoomIndex;
         private static List<RoomData> m_roomData = new List<RoomData>();
-        private static GameObject m_roomPrefab;
         private static Vector2 m_lastPosition;
+        private static Rooms m_roomPrefabData;
 
-        public static void GenerateLevel(Difficulty _difficulty, int _currentFloor, GameObject _roomPrefab)
+        public static void GenerateLevel(Difficulty _difficulty, int _currentFloor, Rooms _roomPrefabData)
         {
-            m_roomPrefab = _roomPrefab;
+            m_roomPrefabData = _roomPrefabData;
             IsLevelAlreadyGenerated();
             m_currentFloorRoomCount = CalculateRoomCount(_difficulty, _currentFloor);
             Debug.Log("m_currentFloorRoomCount: " + m_currentFloorRoomCount);
@@ -57,20 +55,11 @@ namespace Cats.LevelGenerator
             m_currentRoomIndex = 0;
             m_roomData.Clear();
 
-            // Debug
+            // Debug. Remove placeholder room sprites
             for (int i = 0; i < cubes.transform.childCount; i++)
             {
                 Object.Destroy(cubes.transform.GetChild(i).gameObject);
             }
-            ClearConsole();
-        }
-
-        private static void ClearConsole()
-        {
-            var assemly = Assembly.GetAssembly(typeof(UnityEditor.Editor));
-            var type = assemly.GetType("UnityEditor.LogEntries");
-            var method = type.GetMethod("Clear");
-            method.Invoke(new object(), null);
         }
 
         public static void RandomWalkFromEntranceToBoss()
@@ -107,17 +96,44 @@ namespace Cats.LevelGenerator
         {
             foreach (var room in m_roomData)
             {
-                GameObject roomPrefab = Object.Instantiate(m_roomPrefab);
+                GameObject roomPrefab = Object.Instantiate(GetRoomPrefab(room));
                 roomPrefab.transform.SetParent(cubes.transform);
-                roomPrefab.transform.localPosition = new Vector2(room.m_position.x, room.m_position.y);
+                roomPrefab.transform.localPosition = new Vector2(room.GetPosition.x, room.GetPosition.y);
             }
+        }
+
+        private static GameObject GetRoomPrefab(RoomData _roomData)
+        {
+            switch (_roomData.RoomType)
+            {
+                case RoomType.None:
+                    return null;
+                case RoomType.Entrance:
+                    return m_roomPrefabData.EntranceRoomPrefab;
+                case RoomType.Normal:
+                    return m_roomPrefabData.NormalRoomPrefab;
+                case RoomType.Boss:
+                    return m_roomPrefabData.BossRoomPrefab;
+                case RoomType.Secret:
+                    Debug.LogError("The Secret room prefab not implemented yet");
+                    break;
+                case RoomType.Exit:
+                    Debug.LogError("The Exit room prefab not implemented yet");
+                    break;
+                case RoomType.Shop:
+                    Debug.LogError("The Shop room prefab not implemented yet");
+                    break;
+                case RoomType.Special:
+                    Debug.LogError("The Special room prefab not implemented yet");
+                    break;
+            }
+
+            return null;
         }
 
         private static void PlaceRoomLayout()
         {
             RoomType roomType = RoomType.None;
-            //int xPosition = 0;
-            //int yPosition = 0;
             Vector2 position = Vector2.zero;
             if (m_currentRoomIndex == 0) // Place Entrance
             {
@@ -215,7 +231,7 @@ namespace Cats.LevelGenerator
                 return false;
 
             foreach (var room in m_roomData)
-                if (position.x == room.m_position.x && position.y == room.m_position.y)
+                if (position.x == room.GetPosition.x && position.y == room.GetPosition.y)
                     return false;
 
             return true;
@@ -255,7 +271,7 @@ namespace Cats.LevelGenerator
 
                     foreach (var room in m_roomData)
                     {
-                        if (newPosition.x == room.m_position.x && newPosition.y == room.m_position.y)
+                        if (newPosition.x == room.GetPosition.x && newPosition.y == room.GetPosition.y)
                         {
                             Debug.Log($"A room already exists in {newXPos}, {newYPos} and thus is not valid location.");
                             return false;

@@ -3,11 +3,13 @@ using static Cats.LevelGenerator.Enums;
 
 namespace Cats.LevelGenerator
 {
-    public class RoomData : MonoBehaviour
+    public class RoomData
     {
-        public Vector2 m_position;
-        public RoomType m_roomType;
-        public bool m_isDeadEnd;
+        private Vector2 m_position;
+        private RoomType m_roomType;
+        private bool m_isDeadEnd;
+        public Vector2 GetPosition => m_position;
+        public RoomType RoomType => m_roomType;
 
         public RoomData(Vector2 _position, RoomType _roomValue)
         {

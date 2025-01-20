@@ -472,7 +472,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4c5d33b90f30eb24f9f5fdb6db18dea6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_roomPrefab: {fileID: 4221113658286209532, guid: 942c6710c37901c4ca96e505adb89c48, type: 3}
+  m_roomPrefabData: {fileID: 11400000, guid: 024b000e134d1474994003f13e3e9d03, type: 2}
 --- !u!4 &872988195
 Transform:
   m_ObjectHideFlags: 0
@@ -1143,9 +1143,9 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 872988194}
-        m_TargetAssemblyTypeName: LevelGenerator.LevelManager, Assembly-CSharp
+        m_TargetAssemblyTypeName: Cats.LevelGenerator.LevelManager, Assembly-CSharp
         m_MethodName: GenerateLevelButton
-        m_Mode: 1
+        m_Mode: 6
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine

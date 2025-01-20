@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 30aa3c6b187759b439516ee5e4a457bf, type: 3}
+  m_Name: RoomPrefabs
+  m_EditorClassIdentifier: 
+  m_entranceRoomPrefab: {fileID: 4221113658286209532, guid: 337f36397791f1f469a39c61d172ff8e, type: 3}
+  m_normalRoomPrefab: {fileID: 4221113658286209532, guid: 942c6710c37901c4ca96e505adb89c48, type: 3}
+  m_bossRoomPrefab: {fileID: 4221113658286209532, guid: c93293cc0087e2a4c84a4fb14e17cf77, type: 3}
