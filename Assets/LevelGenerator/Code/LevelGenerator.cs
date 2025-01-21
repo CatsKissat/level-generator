@@ -18,7 +18,6 @@ namespace Cats.LevelGenerator
         private static int m_maxYSize = 11;
         private static int m_currentRoomIndex;
         private static List<RoomData> m_roomData = new List<RoomData>();
-        private static Vector2 m_lastPosition;
         private static Rooms m_roomPrefabData;
 
         public static void GenerateLevel(Difficulty _difficulty, int _currentFloor, Rooms _roomPrefabData)
@@ -150,7 +149,8 @@ namespace Cats.LevelGenerator
                 int attempts = 0;
                 do
                 {
-                    position = m_lastPosition;
+                    int lastIndex = m_roomData.Count - 1;
+                    position = m_roomData[lastIndex].GetPosition;
                     int[,] directions = new int[,] { { 0, -1 },   // 0 = up
                                                      { 1,  0 },   // 1 = right
                                                      { 0,  1 },   // 2 = down
@@ -213,8 +213,9 @@ namespace Cats.LevelGenerator
                     roomType = RoomType.Normal;
             }
 
-            m_lastPosition = position;
-            Debug.Log($"LastPosition: {m_lastPosition.x}, {m_lastPosition.y}");
+            int lastInIndex = m_roomData.Count - 1;
+            Vector2 lastPosition = m_roomData[lastInIndex].GetPosition;
+            Debug.Log($"Last Position: {lastPosition.x}, {lastPosition.y}");
             m_currentRoomIndex++;
             m_roomData.Add(new RoomData(position, roomType));
         }
