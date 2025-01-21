@@ -6,27 +6,31 @@ namespace Cats.LevelGenerator
 {
     public static class LevelGenerator
     {
-        private static int m_minRoomCount = 4;
-        private static int m_maxRoomCount = 6;
+        private static int m_minBaseRoomCount = 4;
+        private static int m_maxBaseRoomCount = 6;
         private static float m_levelMultiplier = 3.5f;
-        //private static int m_extraRoomsPerLevel;
-        //private static int m_maxFloors = 3;
         private static bool m_isLevelGenerated;
-        //private static Rooms m_roomPrefabs;
-        private static int m_currentFloorRoomCount;
+        private static int m_roomCount;
+        private static int m_roomsLeft;
         private static int m_maxXSize = 11;
         private static int m_maxYSize = 11;
         private static int m_currentRoomIndex;
-        private static List<RoomData> m_roomData = new List<RoomData>();
+        private static List<RoomData> m_rooms = new List<RoomData>();
+        private static List<RoomData> m_deadEndRooms = new List<RoomData>();
         private static Rooms m_roomPrefabData;
+        private static int m_distanceToBoss;
+        private static float m_roomSplitValue = 1.5f;
 
         public static void GenerateLevel(Difficulty _difficulty, int _currentFloor, Rooms _roomPrefabData)
         {
             m_roomPrefabData = _roomPrefabData;
             IsLevelAlreadyGenerated();
-            m_currentFloorRoomCount = CalculateRoomCount(_difficulty, _currentFloor);
-            Debug.Log("m_currentFloorRoomCount: " + m_currentFloorRoomCount);
+            m_roomCount = CalculateRoomCount(_difficulty, _currentFloor);
+            m_roomsLeft = m_roomCount;
+            m_roomCount = (int)(m_roomCount / m_roomSplitValue);
+            Debug.Log("m_currentFloorRoomCount: " + m_roomCount);
             RandomWalkFromEntranceToBoss();
+            GenerateOtherPaths();
         }
 
         private static void IsLevelAlreadyGenerated()
@@ -41,7 +45,7 @@ namespace Cats.LevelGenerator
         private static int CalculateRoomCount(Difficulty _difficulty, int _currentFloor)
         {
             int rooms = (int)(_currentFloor * m_levelMultiplier);
-            int additionalRooms = Random.Range(m_minRoomCount, (m_maxRoomCount + 1));
+            int additionalRooms = Random.Range(m_minBaseRoomCount, (m_maxBaseRoomCount + 1));
             rooms += additionalRooms;
             rooms += _difficulty == Difficulty.Easy ? 0 : 5;
             return rooms;
@@ -49,12 +53,12 @@ namespace Cats.LevelGenerator
 
         private static void RemoveLevel()
         {
-            m_currentFloorRoomCount = 0;
+            m_roomCount = 0;
             m_isLevelGenerated = false;
             m_currentRoomIndex = 0;
-            m_roomData.Clear();
+            m_rooms.Clear();
 
-            // Debug. Remove placeholder room sprites
+            // Debug. Remove the placeholder room sprites
             for (int i = 0; i < cubes.transform.childCount; i++)
             {
                 Object.Destroy(cubes.transform.GetChild(i).gameObject);
@@ -63,7 +67,7 @@ namespace Cats.LevelGenerator
 
         public static void RandomWalkFromEntranceToBoss()
         {
-            if (m_currentRoomIndex < m_currentFloorRoomCount)
+            if (m_currentRoomIndex < m_roomCount)
             {
                 int debugExitLoop = 0;
                 do
@@ -76,12 +80,19 @@ namespace Cats.LevelGenerator
                         Debug.LogError("Breaking the debugExitLoop loop. Too many tries.");
                         break;
                     }
-                } while (m_currentRoomIndex < m_currentFloorRoomCount);
+                } while (m_currentRoomIndex < m_roomCount);
 
                 DebugVisualiseLayout();
 
-                Debug.Log($"Total rooms is {m_currentFloorRoomCount}");
+                Debug.Log($"Total rooms is {m_roomCount}");
                 m_isLevelGenerated = true;
+
+                UpdateAdjacentRooms();
+
+                for (int i = 0; i < m_rooms.Count; i++)
+                {
+                    Debug.Log($"Room [{i}] has {m_rooms[i].GetAdjacentRooms.Count} and it is deadend: {m_rooms[i].IsDeadEnd}");
+                }
             }
             else
             {
@@ -89,56 +100,39 @@ namespace Cats.LevelGenerator
             }
         }
 
+        private static void GenerateOtherPaths()
+        {
+            m_currentRoomIndex = 0;
+
+            //SelectValidRoom();
+            //RandomiseDirection();
+            //CheckIsPositionValid();
+            //PlaceRoom();
+        }
+
         private static GameObject cubes = new GameObject("Floor");
         private static Texture texture;
         private static void DebugVisualiseLayout()
         {
-            foreach (var room in m_roomData)
+            foreach (var room in m_rooms)
             {
-                GameObject roomPrefab = Object.Instantiate(GetRoomPrefab(room));
+                GameObject roomPrefab = Object.Instantiate(m_roomPrefabData.GetRoomPrefab(room));
                 roomPrefab.transform.SetParent(cubes.transform);
                 roomPrefab.transform.localPosition = new Vector2(room.GetPosition.x, room.GetPosition.y);
             }
-        }
-
-        private static GameObject GetRoomPrefab(RoomData _roomData)
-        {
-            switch (_roomData.RoomType)
-            {
-                case RoomType.None:
-                    return null;
-                case RoomType.Entrance:
-                    return m_roomPrefabData.EntranceRoomPrefab;
-                case RoomType.Normal:
-                    return m_roomPrefabData.NormalRoomPrefab;
-                case RoomType.Boss:
-                    return m_roomPrefabData.BossRoomPrefab;
-                case RoomType.Secret:
-                    Debug.LogError("The Secret room prefab not implemented yet");
-                    break;
-                case RoomType.Exit:
-                    Debug.LogError("The Exit room prefab not implemented yet");
-                    break;
-                case RoomType.Shop:
-                    Debug.LogError("The Shop room prefab not implemented yet");
-                    break;
-                case RoomType.Special:
-                    Debug.LogError("The Special room prefab not implemented yet");
-                    break;
-            }
-
-            return null;
         }
 
         private static void PlaceRoomLayout()
         {
             RoomType roomType = RoomType.None;
             Vector2 position = Vector2.zero;
+            bool isDeadEnd = false;
             if (m_currentRoomIndex == 0) // Place Entrance Room to the middle
             {
                 position.x = m_maxXSize / 2;
                 position.y = m_maxYSize / 2;
                 roomType = RoomType.Entrance;
+                isDeadEnd = true;
             }
             else // Place path to the Boss Room
             {
@@ -149,12 +143,9 @@ namespace Cats.LevelGenerator
                 int attempts = 0;
                 do
                 {
-                    int lastIndex = m_roomData.Count - 1;
-                    position = m_roomData[lastIndex].GetPosition;
-                    int[,] directions = new int[,] { { 0, -1 },   // 0 = up
-                                                     { 1,  0 },   // 1 = right
-                                                     { 0,  1 },   // 2 = down
-                                                     { -1, 0 } }; // 3 = left
+                    int lastIndex = m_rooms.Count - 1;
+                    position = m_rooms[lastIndex].GetPosition;
+                    int[,] directions = Directions();
 
                     int tries = 1;
                     bool isNextPositionValid = false;
@@ -188,11 +179,11 @@ namespace Cats.LevelGenerator
                     position.y += directions[randomDirection, 1];
 
                     // Check are the adjacent positions valid
-                    isValidPosition = HasValidNeighbours(position, directions, randomDirection);
+                    isValidPosition = HasValidAdjacentRooms(position, directions, randomDirection);
 
                     if (!isValidPosition)
                     {
-                        //Debug.Log("Is not valid neighbour. Setting next direction.");
+                        //Debug.Log("Is not valid adjacent room. Setting next direction.");
                         randomDirection++;
                         if (randomDirection > 3)
                             randomDirection = 0;
@@ -207,17 +198,51 @@ namespace Cats.LevelGenerator
                     }
                 } while (!isValidPosition);
 
-                if (m_currentRoomIndex == m_currentFloorRoomCount - 1)
+                if (m_currentRoomIndex == m_roomCount - 1)
+                {
                     roomType = RoomType.Boss;
+                    isDeadEnd = true;
+                }
                 else
+                {
                     roomType = RoomType.Normal;
+                }
             }
 
-            int lastInIndex = m_roomData.Count - 1;
-            Vector2 lastPosition = m_roomData[lastInIndex].GetPosition;
-            Debug.Log($"Last Position: {lastPosition.x}, {lastPosition.y}");
+            int lastInIndex = 0;
+            int distanceToEntrance = 0;
+            Vector2 lastPosition = Vector2.zero;
+            if (m_rooms.Count >= 1)
+            {
+                lastInIndex = m_rooms.Count - 1;
+                lastPosition = m_rooms[lastInIndex].GetPosition;
+                distanceToEntrance = m_rooms[lastInIndex].DistanceToEntrance + 1;
+            }
+            RoomData room = new RoomData(position, roomType, isDeadEnd, distanceToEntrance);
+            m_rooms.Add(room);
+            if (room.RoomType == RoomType.Boss)
+                m_distanceToBoss = distanceToEntrance;
+            lastInIndex = m_rooms.Count - 1;
+
+            //// Add room to the previous room adjacent room list
+            //if (m_rooms.Count > 1)
+            //    m_rooms[lastInIndex].AddAdjacentRoom(room);
+
             m_currentRoomIndex++;
-            m_roomData.Add(new RoomData(position, roomType));
+            m_roomsLeft--;
+
+            // Debug
+            lastPosition = m_rooms[lastInIndex].GetPosition;
+            Debug.Log($"Last Position: {lastPosition.x}, {lastPosition.y}");
+        }
+
+        private static int[,] Directions()
+        {
+            int[,] directions = new int[,] { { 0, -1 },   // 0 = up
+                                             { 1,  0 },   // 1 = right
+                                             { 0,  1 },   // 2 = down
+                                             { -1, 0 } }; // 3 = left
+            return directions;
         }
 
         private static bool IsValidPosition(Vector2 position)
@@ -233,13 +258,13 @@ namespace Cats.LevelGenerator
 
         private static bool IsRoomPositionEmpty(Vector2 position)
         {
-            foreach (var room in m_roomData) // Check is there already a room on that position
+            foreach (var room in m_rooms) // Check is there already a room on that position
                 if (position.x == room.GetPosition.x && position.y == room.GetPosition.y)
                     return false;
             return true;
         }
 
-        private static bool HasValidNeighbours(Vector2 _position, int[,] _directions, int _direction)
+        private static bool HasValidAdjacentRooms(Vector2 _position, int[,] _directions, int _direction)
         {
             int negativeDirection = 0;
             if (_direction == 0)
@@ -251,12 +276,12 @@ namespace Cats.LevelGenerator
             else if (_direction == 3)
                 negativeDirection = 1;
 
-            for (int x = 0; x < _directions.GetLength(0); x++)
+            for (int i = 0; i < _directions.GetLength(0); i++)
             {
-                if (negativeDirection != x)
+                if (negativeDirection != i)
                 {
-                    float newXPos = _position.x + _directions[x, 0];
-                    float newYPos = _position.y + _directions[x, 1];
+                    float newXPos = _position.x + _directions[i, 0];
+                    float newYPos = _position.y + _directions[i, 1];
                     Vector2 newPosition = new Vector2(newXPos, newYPos);
 
                     if (newPosition.x < 0 || newPosition.x >= m_maxXSize) // Adjacent position is out of bounds and it is ok
@@ -270,6 +295,29 @@ namespace Cats.LevelGenerator
                 }
             }
             return true;
+        }
+
+        private static void UpdateAdjacentRooms()
+        {
+            int adjacentRooms = 0;
+            int[,] directions = Directions();
+            foreach (var room in m_rooms)
+            {
+                for (int i = 0; i < directions.GetLength(0); i++)
+                {
+                    float adjacentXPosition = room.GetPosition.x + directions[i, 0];
+                    float adjacentYPosition = room.GetPosition.y + directions[i, 1];
+
+                    foreach (var comparedRoom in m_rooms)
+                    {
+                        if (adjacentXPosition == comparedRoom.GetPosition.x && adjacentYPosition == comparedRoom.GetPosition.y)
+                        {
+                            room.AddAdjacentRoom(comparedRoom);
+                            adjacentRooms++;
+                        }
+                    }
+                }
+            }
         }
     }
 }
