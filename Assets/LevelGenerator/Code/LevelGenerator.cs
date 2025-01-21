@@ -135,13 +135,13 @@ namespace Cats.LevelGenerator
         {
             RoomType roomType = RoomType.None;
             Vector2 position = Vector2.zero;
-            if (m_currentRoomIndex == 0) // Place Entrance
+            if (m_currentRoomIndex == 0) // Place Entrance Room to the middle
             {
                 position.x = m_maxXSize / 2;
                 position.y = m_maxYSize / 2;
                 roomType = RoomType.Entrance;
             }
-            else // Place path to the boss
+            else // Place path to the Boss Room
             {
                 int randomDirection = 0;
                 //Debug.Log("Randomising direction");
@@ -151,11 +151,10 @@ namespace Cats.LevelGenerator
                 do
                 {
                     position = m_lastPosition;
-                    int[,] directions = new int[,] { { 0, -1 }, // 0 = up
-                                                     { 1,  0 }, // 1 = right
-                                                     { 0,  1 }, // 2 = down
-                                                     { -1, 0 }  // 3 = left
-                                                   };
+                    int[,] directions = new int[,] { { 0, -1 },   // 0 = up
+                                                     { 1,  0 },   // 1 = right
+                                                     { 0,  1 },   // 2 = down
+                                                     { -1, 0 } }; // 3 = left
 
                     int tries = 1;
                     bool isNextPositionValid = false;
@@ -215,25 +214,27 @@ namespace Cats.LevelGenerator
             }
 
             m_lastPosition = position;
-            Debug.Log($"LastPosition: {m_lastPosition[0]}, {m_lastPosition[1]}");
+            Debug.Log($"LastPosition: {m_lastPosition.x}, {m_lastPosition.y}");
             m_currentRoomIndex++;
             m_roomData.Add(new RoomData(position, roomType));
         }
 
         private static bool IsValidPosition(Vector2 position)
         {
-            //Debug.LogWarning($"Checking new position {xPosition}, {yPosition} from {m_lastPosition[0]}, {m_lastPosition[1]}");
-
             if (position.x < 0 || position.x >= m_maxXSize) // Position X is out of bounds
                 return false;
 
             if (position.y < 0 || position.y >= m_maxYSize) // Position Y is out of bounds
                 return false;
 
-            foreach (var room in m_roomData)
+            return IsRoomPositionEmpty(position);
+        }
+
+        private static bool IsRoomPositionEmpty(Vector2 position)
+        {
+            foreach (var room in m_roomData) // Check is there already a room on that position
                 if (position.x == room.GetPosition.x && position.y == room.GetPosition.y)
                     return false;
-
             return true;
         }
 
@@ -257,29 +258,16 @@ namespace Cats.LevelGenerator
                     float newYPos = _position.y + _directions[x, 1];
                     Vector2 newPosition = new Vector2(newXPos, newYPos);
 
-                    if (newPosition.x < 0 || newPosition.x >= m_maxXSize)
-                    {
-                        //Debug.LogWarning($"newXPos ({newXPos}) is out of bounds and it is valid adjacent room. Continue loop");
+                    if (newPosition.x < 0 || newPosition.x >= m_maxXSize) // Adjacent position is out of bounds and it is ok
                         continue;
-                    }
 
-                    if (newPosition.y < 0 || newPosition.y >= m_maxYSize)
-                    {
-                        //Debug.LogWarning($"newYPos ({newYPos}) is out of bounds and it is valid adjacent room. Continue loop");
+                    if (newPosition.y < 0 || newPosition.y >= m_maxYSize) // Adjacent position is out of bounds and it is ok
                         continue;
-                    }
 
-                    foreach (var room in m_roomData)
-                    {
-                        if (newPosition.x == room.GetPosition.x && newPosition.y == room.GetPosition.y)
-                        {
-                            Debug.Log($"A room already exists in {newXPos}, {newYPos} and thus is not valid location.");
-                            return false;
-                        }
-                    }
+                    if (!IsRoomPositionEmpty(newPosition))
+                        return false;
                 }
             }
-            //Debug.Log("Is valid");
             return true;
         }
     }
