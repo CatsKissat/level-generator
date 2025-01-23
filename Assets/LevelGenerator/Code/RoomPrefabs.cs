@@ -4,7 +4,7 @@ using static Cats.LevelGenerator.Enums;
 namespace Cats.LevelGenerator
 {
     [CreateAssetMenu(fileName = "RoomPrefabs", menuName = "Scriptable Objects/Room Prefabs")]
-    public class Rooms : ScriptableObject
+    public class RoomPrefabs : ScriptableObject
     {
         [SerializeField] private GameObject m_entranceRoomPrefab;
         [SerializeField] private GameObject m_normalRoomPrefab;

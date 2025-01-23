@@ -6,7 +6,7 @@ namespace Cats.LevelGenerator
 {
     public class LevelManager : MonoBehaviour
     {
-        [SerializeField] private Rooms m_roomPrefabData;
+        [SerializeField] private RoomPrefabs m_roomPrefabData;
         private int m_currentFloor;
         private Difficulty m_difficulty;
 

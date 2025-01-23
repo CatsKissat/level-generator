@@ -18,12 +18,12 @@ namespace Cats.LevelGenerator
         private static int m_currentRoomIndex;
         private static List<RoomData> m_rooms = new List<RoomData>();
         private static List<RoomData> m_deadEndRooms = new List<RoomData>();
-        private static Rooms m_roomPrefabData;
+        private static RoomPrefabs m_roomPrefabData;
         private static int m_distanceToBoss;
         private static float m_roomSplitValue = 1.5f;
         private static int[,] m_roomGrid;
 
-        public static void GenerateLevel(Difficulty _difficulty, int _currentFloor, Rooms _roomPrefabData)
+        public static void GenerateLevel(Difficulty _difficulty, int _currentFloor, RoomPrefabs _roomPrefabData)
         {
             IsLevelAlreadyGenerated();
             m_roomGrid = new int[m_floorYSize, m_floorXSize];
@@ -146,7 +146,6 @@ namespace Cats.LevelGenerator
             else // Place path to the Boss Room
             {
                 int randomDirection = 0;
-                //Debug.Log("Randomising direction");
                 randomDirection = Random.Range(0, 4);
                 bool isValidPosition = false;
                 int attempts = 0;
@@ -160,7 +159,6 @@ namespace Cats.LevelGenerator
                     bool isNextPositionValid = false;
                     do
                     {
-                        //Debug.Log($"Direction: {randomDirection}");
                         float newXPosition = position.x + directions[randomDirection, 0];
                         float newYPosition = position.y + directions[randomDirection, 1];
                         Vector2 newPosition = new Vector2(newXPosition, newYPosition);
@@ -169,11 +167,9 @@ namespace Cats.LevelGenerator
 
                         if (!isNextPositionValid)
                         {
-                            //Debug.Log("Is not valid position for next room. Setting next direction.");
                             randomDirection++;
                             if (randomDirection > 3)
                                 randomDirection = 0;
-                            //Debug.Log($"New direction is: {randomDirection}");
                         }
 
                         tries++;
@@ -192,11 +188,9 @@ namespace Cats.LevelGenerator
 
                     if (!isValidPosition)
                     {
-                        //Debug.Log("Is not valid adjacent room. Setting next direction.");
                         randomDirection++;
                         if (randomDirection > 3)
                             randomDirection = 0;
-                        //Debug.Log($"New direction is: {randomDirection}");
                     }
 
                     attempts++;
