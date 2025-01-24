@@ -6,7 +6,6 @@ namespace Cats.LevelGenerator
 {
     public class RoomData
     {
-        // NOTE: Does this need to know its own position?
         private Vector2 m_position;
         private RoomType m_roomType;
         private bool m_isDeadEnd;
@@ -29,21 +28,20 @@ namespace Cats.LevelGenerator
             m_distanceToEntrance = _distanceFromEntrance;
         }
 
-        public void UpdateAdjacentRooms(int[,] _directions, int[,] _roomGrid, int _floorXSize, int _floorYSize)
+        public void UpdateAdjacentRooms(Vector2[] _directions, int[,] _roomGrid, int _floorXSize, int _floorYSize)
         {
             m_adjacentRooms.Clear();
-            for (int i = 0; i < _directions.GetLength(0); i++)
+            int directions = 4;
+            for (int i = 0; i < directions; i++)
             {
-                int xDirection = _directions[i, 0];
-                int yDirection = _directions[i, 1];
-                int adjacentXPosition = (int)m_position.x + xDirection;
-                int adjacentYPosition = (int)m_position.y + yDirection;
+                Vector2 direction = _directions[i];
+                Vector2 adjacentPosition = m_position + direction;
 
-                if (adjacentXPosition >= _floorXSize || adjacentXPosition < 0 || adjacentYPosition >= _floorYSize || adjacentYPosition < 0)
+                if (adjacentPosition.x >= _floorXSize || adjacentPosition.x < 0 || adjacentPosition.y >= _floorYSize || adjacentPosition.y < 0)
                     continue;
 
-                if (_roomGrid[adjacentYPosition, adjacentXPosition] != 0)
-                    m_adjacentRooms.Add(new Vector2(xDirection, yDirection));
+                if (_roomGrid[(int)adjacentPosition.y, (int)adjacentPosition.x] != 0)
+                    m_adjacentRooms.Add(direction);
             }
             m_isDeadEnd = m_adjacentRooms.Count <= 1 ? true : false;
         }

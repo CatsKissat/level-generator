@@ -111,14 +111,6 @@ namespace Cats.LevelGenerator
         private static Texture texture;
         private static void DebugVisualiseLayout()
         {
-            // Instantiate prefab rooms
-            foreach (var room in m_rooms)
-            {
-                GameObject roomPrefab = Object.Instantiate(m_roomPrefabData.GetRoomPrefab(room));
-                roomPrefab.transform.SetParent(cubes.transform);
-                roomPrefab.transform.localPosition = new Vector2(room.GetPosition.x, room.GetPosition.y);
-            }
-
             foreach (var room in m_rooms)
                 UpdateAdjacentRooms(room);
 
@@ -133,73 +125,27 @@ namespace Cats.LevelGenerator
                 levelAsString += "\n";
             }
             Debug.Log(levelAsString);
+
+            // Instantiate prefab rooms
+            foreach (var room in m_rooms)
+            {
+                GameObject roomPrefab = Object.Instantiate(m_roomPrefabData.GetRoomPrefab(room));
+                roomPrefab.transform.SetParent(cubes.transform);
+                roomPrefab.transform.localPosition = new Vector2(room.GetPosition.x, room.GetPosition.y);
+            }
         }
 
         private static void RandomWalkFromEntranceToBoss()
         {
             Vector2 position = Vector2.zero;
-            if (m_currentRoomIndex == 0) // Place Entrance Room to the middle
+            if (m_currentRoomIndex == 0) // Place the Entrance Room to the middle of the Room Grid
             {
                 position.x = m_floorXSize / 2;
                 position.y = m_floorYSize / 2;
             }
             else // Place path to the Boss Room
             {
-                int randomDirection = 0;
-                randomDirection = Random.Range(0, 4);
-                bool isValidPosition = false;
-                int attempts = 0;
-                do
-                {
-                    int lastIndex = m_rooms.Count - 1;
-                    position = m_rooms[lastIndex].GetPosition;
-                    int[,] directions = Directions();
-
-                    int tries = 1;
-                    bool isNextPositionValid = false;
-                    do
-                    {
-                        float newXPosition = position.x + directions[randomDirection, 0];
-                        float newYPosition = position.y + directions[randomDirection, 1];
-                        Vector2 newPosition = new Vector2(newXPosition, newYPosition);
-
-                        isNextPositionValid = IsValidPosition(newPosition);
-
-                        if (!isNextPositionValid)
-                        {
-                            randomDirection++;
-                            if (randomDirection > 3)
-                                randomDirection = 0;
-                        }
-
-                        tries++;
-                        if (tries > 4)
-                        {
-                            Debug.LogError("The new room position is illegal. Probably a deadend.");
-                            break;
-                        }
-                    } while (!isNextPositionValid);
-
-                    position.x += directions[randomDirection, 0];
-                    position.y += directions[randomDirection, 1];
-
-                    // Check are the adjacent positions valid
-                    isValidPosition = HasValidAdjacentRooms(position, directions, randomDirection);
-
-                    if (!isValidPosition)
-                    {
-                        randomDirection++;
-                        if (randomDirection > 3)
-                            randomDirection = 0;
-                    }
-
-                    attempts++;
-                    if (attempts >= 10)
-                    {
-                        Debug.LogError("Breaking the loop");
-                        break;
-                    }
-                } while (!isValidPosition);
+                position = GetNextValidPosition();
             }
 
             RoomType roomType = RoomType.None;
@@ -207,6 +153,77 @@ namespace Cats.LevelGenerator
 
             PlaceRoomLayout(roomType, position);
             m_roomGrid[(int)position.y, (int)position.x] = (int)roomType;
+        }
+
+        private static Vector2 GetNextValidPosition()
+        {
+            Vector2 nextRoomPosition = Vector2.zero;
+            bool hasValidAdjacentSpaces = false;
+            int adjacentRoomLoop = 0;
+            int randomDirectionValue = RandomiseDirectionValue();
+            do
+            {
+                //Debug.Log("randomDirectionValue before: " + randomDirectionValue);
+                nextRoomPosition = GetValidRoomPosition(ref randomDirectionValue);
+                //Debug.Log("randomDirectionValue after: " + randomDirectionValue);
+                //Debug.Log($"nextRoomPosition: {nextRoomPosition}");
+                hasValidAdjacentSpaces = HasValidAdjacentRooms(nextRoomPosition, randomDirectionValue);
+                //Debug.Log($"nextRoomPosition: {nextRoomPosition}, {m_currentRoomIndex}] adjacentRoomLoop: {adjacentRoomLoop}, isValidPosition: {hasValidAdjacentSpaces}");
+
+                if (!hasValidAdjacentSpaces)
+                    IncreaseDirectionValue(ref randomDirectionValue);
+
+                if (InfiniteLoop(ref adjacentRoomLoop))
+                    break;
+            } while (!hasValidAdjacentSpaces);
+            //Debug.LogWarning($"{m_currentRoomIndex}] found valid position.");
+            return nextRoomPosition;
+        }
+
+        private static Vector2 GetValidRoomPosition(ref int directionValue)
+        {
+            int lastIndex = m_rooms.Count - 1;
+            Vector2 previousRoomPosition = m_rooms[lastIndex].GetPosition;
+            bool isNextPositionValid = false;
+            int newRoomLoop = 0;
+            Vector2 nextRoomPosition = Vector2.zero;
+            do
+            {
+                Vector2 directionToAdjacentRoom = Direction(directionValue);
+                nextRoomPosition = previousRoomPosition + directionToAdjacentRoom;
+                isNextPositionValid = IsValidPosition(nextRoomPosition);
+                //Debug.Log($"[{m_currentRoomIndex}] GetNextRoomPosition {nextRoomPosition}, newRoomLoop: {newRoomLoop}, direction {directionValue}, isNextPositionValid {isNextPositionValid}");
+
+                if (!isNextPositionValid)
+                    IncreaseDirectionValue(ref directionValue);
+
+                if (InfiniteLoop(ref newRoomLoop))
+                    break;
+            } while (!isNextPositionValid);
+            return nextRoomPosition;
+        }
+
+        private static void IncreaseDirectionValue(ref int _randomisedDirectionValue)
+        {
+            _randomisedDirectionValue++;
+            if (_randomisedDirectionValue > 3)
+                _randomisedDirectionValue = 0;
+        }
+
+        private static int RandomiseDirectionValue()
+        {
+            return Random.Range(0, 4);
+        }
+
+        private static bool InfiniteLoop(ref int _loop)
+        {
+            if (_loop > 10)
+            {
+                Debug.LogError("Ending infinite do-while loop.");
+                return true;
+            }
+            _loop++;
+            return false;
         }
 
         private static RoomType GetRoomType()
@@ -250,12 +267,28 @@ namespace Cats.LevelGenerator
             _room.UpdateAdjacentRooms(Directions(), m_roomGrid, m_floorXSize, m_floorYSize);
         }
 
-        private static int[,] Directions()
+        private static Vector2 Direction(int _directionValue)
         {
-            int[,] directions = new int[,] { { 0, -1 },   // 0 = up
-                                             { 1,  0 },   // 1 = right
-                                             { 0,  1 },   // 2 = down
-                                             { -1, 0 } }; // 3 = left
+            switch (_directionValue)
+            {
+                case 0:
+                    return Vector2.up;
+                case 1:
+                    return Vector2.right;
+                case 2:
+                    return Vector2.down;
+                case 3:
+                    return Vector2.left;
+            }
+            return Vector2.zero;
+        }
+
+        private static Vector2[] Directions()
+        {
+            Vector2[] directions = new Vector2[4] { Vector2.up,
+                                                    Vector2.right,
+                                                    Vector2.down,
+                                                    Vector2.left };
             return directions;
         }
 
@@ -278,25 +311,31 @@ namespace Cats.LevelGenerator
             return true;
         }
 
-        private static bool HasValidAdjacentRooms(Vector2 _position, int[,] _directions, int _direction)
+        private static bool HasValidAdjacentRooms(Vector2 _position, int _directionValue)
         {
-            int negativeDirection = 0;
-            if (_direction == 0)
-                negativeDirection = 2;
-            else if (_direction == 1)
-                negativeDirection = 3;
-            else if (_direction == 2)
-                negativeDirection = 0;
-            else if (_direction == 3)
-                negativeDirection = 1;
+            int negativeDirectionValue = 0;
+            if (_directionValue == 0)
+                negativeDirectionValue = 2;
+            else if (_directionValue == 1)
+                negativeDirectionValue = 3;
+            else if (_directionValue == 2)
+                negativeDirectionValue = 0;
+            else if (_directionValue == 3)
+                negativeDirectionValue = 1;
 
-            for (int i = 0; i < _directions.GetLength(0); i++)
+            //Vector2 previousRoomPosition = m_rooms[m_rooms.Count - 1].GetPosition;
+            //Vector2 direction = previousRoomPosition - _position;
+            //Vector2 negativeDirection = NegativeDirection(direction);
+
+            int directions = 4;
+            for (int i = 0; i < directions; i++)
             {
-                if (negativeDirection != i)
+                //Vector2 adjacentRoom = _position;
+                //adjacentRoom += Direction(i);
+
+                if (i != negativeDirectionValue)
                 {
-                    float newXPos = _position.x + _directions[i, 0];
-                    float newYPos = _position.y + _directions[i, 1];
-                    Vector2 newPosition = new Vector2(newXPos, newYPos);
+                    Vector2 newPosition = _position + Direction(i);
 
                     if (newPosition.x < 0 || newPosition.x >= m_floorXSize) // Adjacent position is out of bounds and it is ok
                         continue;
@@ -304,8 +343,12 @@ namespace Cats.LevelGenerator
                     if (newPosition.y < 0 || newPosition.y >= m_floorYSize) // Adjacent position is out of bounds and it is ok
                         continue;
 
+                    //Debug.Log($"Checking {newPosition}, direction index: {i}");
                     if (!IsNewRoomPositionEmpty(newPosition))
+                    {
+                        //Debug.Log("IsNewRoomPositionEmpty is FALSE");
                         return false;
+                    }
                 }
             }
             return true;
